@@ -160,6 +160,7 @@ function clearStage() {
   }
 }
 
+let changeListener;
 async function loadUsdFile(directory, filename, path, isRootFile = true) {
   setFilenameText(filename);
   if (debugFileHandling) console.warn("loading " + path, isRootFile, directory, filename);
@@ -210,6 +211,9 @@ async function loadUsdFile(directory, filename, path, isRootFile = true) {
     document.getElementById('variantSet').textContent = topVariantSet;
 
     const variantOptionsSelect = document.getElementById('variantOptions');
+    if (changeListener){
+      variantOptionsSelect.removeEventListener('change', changeListener);
+    }
     variantOptionsSelect.innerHTML = '';
 
     const variantOptions = defaultPrim.GetVariantSetOptions(topVariantSet);
@@ -220,20 +224,20 @@ async function loadUsdFile(directory, filename, path, isRootFile = true) {
       variantOptionsSelect.appendChild(option);
     }
 
-    variantOptionsSelect.value = defaultPrim.GetVariantSelection(topVariantSet);
-
-    variantOptionsSelect.addEventListener('change', async function () {
-      window.usdRoot.clear();
+    let variantSelection = defaultPrim.GetVariantSelection(topVariantSet);
+    variantOptionsSelect.value = variantSelection;
+    changeListener = async function () {
+      await window.usdRoot.clear();
       const selectedVariant = this.value;
       await defaultPrim.SetVariant(topVariantSet, selectedVariant);
-    });
+    };
+    variantOptionsSelect.addEventListener('change', changeListener);
   }
   else {
     variantInfo.classList.add('hidden');
   }
 
-  fitCameraToSelection(window.camera, window._controls, [window.usdRoot]);
-  console.log("Loading done. Scene: ", window.usdRoot);
+
   ready = true;
   try {
     console.log("Currently Exposed API", {
@@ -274,6 +278,9 @@ async function loadUsdFile(directory, filename, path, isRootFile = true) {
   }
   addPath(root, "/");
   console.log("File system", root, Usd.FS_analyzePath("/"));
+
+  fitCameraToSelection(window.camera, window._controls, [window.usdRoot]);
+  console.log("Loading done. Scene: ", window.usdRoot);
 }
 
 // from https://discourse.threejs.org/t/camera-zoom-to-fit-object/936/24
@@ -457,7 +464,7 @@ async function init() {
     });
   }
   
-  render();
+  await render();
   
   return envMapPromise;
 }
